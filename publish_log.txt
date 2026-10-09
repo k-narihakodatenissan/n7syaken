@@ -1,2 +1,22 @@
 ===== 2026/10/09 13:54:24.95 ===== 
 Already up to date.
+warning: in the working copy of 'publish_log.txt', LF will be replaced by CRLF the next time Git touches it
+[main c272f33] update 2026/10/09 13:54:25.79
+ Committer: 成澤 邦彦 <PHT001420@dealers.jp.nissan.biz>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 2 files changed, 10 insertions(+)
+ create mode 100644 publish_log.txt
+ create mode 100644 "\345\205\254\351\226\213_\350\207\252\345\213\225\347\224\250.bat"
+To https://github.com/k-narihakodatenissan/n7syaken.git
+   bc09c26..c272f33  main -> main
+done 
