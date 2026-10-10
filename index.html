@@ -654,10 +654,25 @@ async function exportAsXlsx(aoa) {
     rows: dataRows,
   });
 
+  // 列幅：全角を2として計算し、列ごとに上限を設ける。上限を超える長い文章は折り返して表示する
+  // （幅を抑えるほど、1ページに収めて印刷したときの文字が大きくなる）
+  const dispW = (t) => {
+    let w = 0;
+    for (const ch of String(t)) {
+      const c = ch.codePointAt(0);
+      w += (c <= 0x7e || (c >= 0xff61 && c <= 0xff9f)) ? 1 : 2;
+    }
+    return w;
+  };
+  const longestLineW = (t) => String(t).split(/\r?\n/).reduce((m, line) => Math.max(m, dispW(line)), 0);
+  const WIDTH_CAP_DEFAULT = 14, WIDTH_CAP_COMMENT = 20, WIDTH_CAP_NAME = 20;
   headerRow.forEach((label, i) => {
-    let maxLen = label.length;
-    dataRows.forEach(r => { maxLen = Math.max(maxLen, String(r[i] ?? "").length); });
-    ws.getColumn(i + 1).width = Math.min(Math.max(maxLen + 2, 8), 40);
+    let maxW = 0;
+    dataRows.forEach(r => { maxW = Math.max(maxW, longestLineW(r[i] ?? "")); });
+    const natural = Math.max(maxW, Math.ceil(dispW(label) / 2));   // 見出しは2行まで折り返してよい
+    const cap = label.includes("コメント") ? WIDTH_CAP_COMMENT
+              : (label === "お客様名" ? WIDTH_CAP_NAME : WIDTH_CAP_DEFAULT);
+    ws.getColumn(i + 1).width = Math.min(Math.max(natural + 2, 6), cap);
   });
 
   const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9E8E5" } };
@@ -668,16 +683,24 @@ async function exportAsXlsx(aoa) {
     cell.font = { bold: true, name: "Calibri", size: 11, color: { argb: "FF56585B" } };
     cell.fill = headerFill;
     cell.border = fullBorder;
-    cell.alignment = { vertical: "middle" };
+    cell.alignment = { vertical: "middle", wrapText: true };
   });
   ws.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     row.eachCell({ includeEmpty: true }, cell => {
       cell.border = fullBorder;
-      if (typeof cell.value === "number") cell.alignment = { horizontal: "right" };
+      cell.alignment = { vertical: "top", wrapText: true, ...(typeof cell.value === "number" ? { horizontal: "right" } : {}) };
     });
   });
-  ws.views = [{ state: "frozen", ySplit: 1 }];
+  ws.views = [{ state: "frozen", ySplit: 1 }];   // 画面：1行目（見出し）を固定
+  ws.pageSetup.printTitlesRow = "1:1";            // 印刷：2ページ目以降にも1行目（見出し）を繰り返す
+  // 印刷：用紙は横向き、全列を1ページの幅に収める（縦方向は行数に応じて複数ページ）
+  ws.pageSetup.paperSize = 9;   // A4
+  ws.pageSetup.orientation = "landscape";
+  ws.pageSetup.fitToPage = true;
+  ws.pageSetup.fitToWidth = 1;
+  ws.pageSetup.fitToHeight = 0;
+  ws.pageSetup.margins = { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.25, footer: 0.25 };
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
