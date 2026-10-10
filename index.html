@@ -67,6 +67,8 @@
   .pager { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; }
   .pager button { padding: 4px 10px; border: 1px solid var(--border); background: #fff; border-radius: 4px; cursor: pointer; }
   .pager button:disabled { opacity: 0.4; cursor: default; }
+  .pager .page-size { margin-left: 16px; display: flex; align-items: center; gap: 6px; color: #555; }
+  .pager select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #fff; }
   .count-note { font-size: 12px; color: #777; margin-top: 4px; }
   .month-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 18px 0; }
   .legend-box {
@@ -148,6 +150,15 @@
 </div>
 <div class="pager">
   <button id="prevPage">← 前へ</button><span id="pageInfo"></span><button id="nextPage">次へ →</button>
+  <label class="page-size">表示件数
+    <select id="pageSize">
+      <option value="50" selected>50件</option>
+      <option value="100">100件</option>
+      <option value="200">200件</option>
+      <option value="500">500件</option>
+      <option value="0">すべて</option>
+    </select>
+  </label>
 </div>
 
 <script>
@@ -167,7 +178,7 @@ const KIND_VALUES = ["車検", "点検"];   // ["車検","点検"] のうちデ�
 
 const STORE_IDX = 0, OWNER_IDX = 1, RANK_IDX = 6, STATUS_IDX = 7, CAT_IDX = 8, PURPOSE_IDX = 9, MONTH_IDX = 10, KIND_IDX = 11;
 
-const PAGE_SIZE = 50;
+let pageSize = 50;   // 1ページの表示件数（0 のときはすべて表示。画面下の「表示件数」で切り替え）
 const FROZEN_COLS = LABELS.indexOf("車両") + 1;   // 店舗〜車両を左に固定（0なら固定しない）
 let currentPage = 0;
 let sortCol = null;
@@ -543,10 +554,11 @@ window.addEventListener("resize", applyFrozenCols);
 
 function renderCaseList() {
   const filtered = getFilteredSorted();
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const perPage = pageSize > 0 ? pageSize : Math.max(filtered.length, 1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   if (currentPage >= totalPages) currentPage = totalPages - 1;
-  const start = currentPage * PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + PAGE_SIZE);
+  const start = currentPage * perPage;
+  const pageRows = filtered.slice(start, start + perPage);
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
   pageRows.forEach(r => {
@@ -591,7 +603,7 @@ function renderCaseList() {
   });
   applyFrozenCols();
   document.getElementById("pageInfo").textContent =
-    `${filtered.length}件中 ${filtered.length ? start+1 : 0}-${Math.min(start+PAGE_SIZE, filtered.length)}件を表示（${currentPage+1}/${totalPages}ページ）`;
+    `${filtered.length}件中 ${filtered.length ? start+1 : 0}-${Math.min(start+perPage, filtered.length)}件を表示（${currentPage+1}/${totalPages}ページ）`;
   document.getElementById("prevPage").disabled = currentPage === 0;
   document.getElementById("nextPage").disabled = currentPage >= totalPages - 1;
 }
@@ -599,6 +611,7 @@ function renderCaseList() {
 ["filterOwner","filterCat"].forEach(id =>
   document.getElementById(id).addEventListener("change", () => { extraStatusFilter = null; excludeStatuses = []; currentPage = 0; renderCaseList(); }));
 document.getElementById("searchBox").addEventListener("input", () => { extraStatusFilter = null; excludeStatuses = []; currentPage = 0; renderCaseList(); });
+document.getElementById("pageSize").addEventListener("change", (e) => { pageSize = Number(e.target.value); currentPage = 0; renderCaseList(); });
 document.getElementById("prevPage").addEventListener("click", () => { currentPage--; renderCaseList(); });
 document.getElementById("nextPage").addEventListener("click", () => { currentPage++; renderCaseList(); });
 
