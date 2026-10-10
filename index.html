@@ -19,6 +19,11 @@
   td.comment { white-space: normal; min-width: 240px; max-width: 420px; }
   th { background: var(--header-bg); color: var(--header-fg); font-weight: bold; position: sticky; top: 0; cursor: pointer; user-select: none; }
   th.sortable:hover { background: #ddd; }
+  /* 案件一覧：左側の列（店舗〜車両）を固定。位置（left）はJSで列幅から計算する */
+  th { z-index: 3; }
+  th.frozen { position: sticky; z-index: 5; }
+  td.frozen { position: sticky; z-index: 2; background: #fff; }
+  th.frozen-last, td.frozen-last { box-shadow: 2px 0 0 #9a9a9a; }
   .link-btn { display: inline-block; padding: 6px 14px; border-radius: 4px; background: #E36C09; color: #fff; font-weight: bold; font-size: 13px; text-decoration: none; }
   .link-btn:hover { background: #c95d05; }
   .title-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
@@ -163,6 +168,7 @@ const KIND_VALUES = ["車検", "点検"];   // ["車検","点検"] のうちデ�
 const STORE_IDX = 0, OWNER_IDX = 1, RANK_IDX = 6, STATUS_IDX = 7, CAT_IDX = 8, PURPOSE_IDX = 9, MONTH_IDX = 10, KIND_IDX = 11;
 
 const PAGE_SIZE = 50;
+const FROZEN_COLS = LABELS.indexOf("車両") + 1;   // 店舗〜車両を左に固定（0なら固定しない）
 let currentPage = 0;
 let sortCol = null;
 let sortAsc = true;
@@ -440,6 +446,10 @@ LABELS.forEach((label, colIdx) => {
   th.addEventListener("click", () => {
     if (sortCol === colIdx) setSort(colIdx, !sortAsc); else setSort(colIdx, true);
   });
+  if (colIdx < FROZEN_COLS) {
+    th.classList.add("frozen");
+    if (colIdx === FROZEN_COLS - 1) th.classList.add("frozen-last");
+  }
   headerRow.appendChild(th);
   const opt = document.createElement("option");
   opt.value = String(colIdx); opt.textContent = label;
@@ -515,6 +525,20 @@ function getFilteredSorted() {
   return filtered;
 }
 
+function applyFrozenCols() {
+  const ths = document.querySelectorAll("#headerRow th");
+  const lefts = [];
+  let x = 0;
+  for (let i = 0; i < FROZEN_COLS && i < ths.length; i++) {
+    lefts.push(x);
+    x += ths[i].getBoundingClientRect().width;
+  }
+  document.querySelectorAll("#mainTable th.frozen, #mainTable td.frozen").forEach(el => {
+    el.style.left = lefts[el.cellIndex] + "px";
+  });
+}
+window.addEventListener("resize", applyFrozenCols);
+
 function renderCaseList() {
   const filtered = getFilteredSorted();
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -555,10 +579,15 @@ function renderCaseList() {
         if (typeof val === "number") td.classList.add("num");
         if (LABELS[colIdx] === "活動結果コメント") td.classList.add("comment");
       }
+      if (colIdx < FROZEN_COLS) {
+        td.classList.add("frozen");
+        if (colIdx === FROZEN_COLS - 1) td.classList.add("frozen-last");
+      }
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
+  applyFrozenCols();
   document.getElementById("pageInfo").textContent =
     `${filtered.length}件中 ${filtered.length ? start+1 : 0}-${Math.min(start+PAGE_SIZE, filtered.length)}件を表示（${currentPage+1}/${totalPages}ページ）`;
   document.getElementById("prevPage").disabled = currentPage === 0;
