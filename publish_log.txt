@@ -529,3 +529,26 @@ To https://github.com/k-narihakodatenissan/n7syaken.git
 done 
 ===== 2026/10/23  8:21:01.82 ===== 
 Already up to date.
+warning: in the working copy of 'publish_log.txt', LF will be replaced by CRLF the next time Git touches it
+[main 06828b1] update 2026/10/23  8:21:02.59
+ Committer: 成澤 邦彦 <PHT001420@DEALERS.JP.NISSAN.BIZ>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+fatal: Unable to persist credentials with the 'wincredman' credential store.
+See https://aka.ms/gcm/credstores for more information.
+bash: line 1: /dev/tty: No such device or address
+error: failed to execute prompt script (exit code 1)
+fatal: could not read Username for 'https://github.com': No such file or directory
+done 
+===== 2026/10/24  8:21:01.83 ===== 
+Already up to date.
