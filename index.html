@@ -103,7 +103,7 @@
 <body>
 
 <div class="title-row"><h1>N-7対応ダッシュボード</h1><a class="link-btn" href="https://salesnavi.my.site.com/snavi/s/" target="_blank" rel="noopener noreferrer">セールスナビ ↗</a></div>
-<div class="period-line">対象範囲：2026年11月～　／　下のボタンで表示月を切り替えられます　（11/14現在）</div>
+<div class="period-line">対象範囲：2026年11月～　／　下のボタンで表示月を切り替えられます　（11/15現在）</div>
 <div class="subtitle">対象：CA名簿に記載の担当者11368件のみ集計</div>
 
 <div class="legend-box">
@@ -694,6 +694,28 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+// Excelの各シートの先頭に書く「何を選択して出力したか」の文言を作る
+//   common：サマリー（店舗別・CA別の集計）にも共通の条件　／　extra：案件一覧だけに掛かる条件
+function describeSelections() {
+  const common = [];
+  if (selectedKinds.size) common.push("種別：" + KIND_VALUES.filter(k => selectedKinds.has(k)).join("・"));
+  if (selectedPurposes.size) common.push("目的名称：" + PURPOSE_VALUES.filter(v => selectedPurposes.has(v)).join("・"));
+  if (selectedMonths.size) common.push("到来月：" + MONTH_LABELS.filter(l => selectedMonths.has(l)).join("・"));
+  if (selectedRanks.size) common.push("顧客層別：" + Array.from(selectedRanks).sort().join("・"));
+  if (selectedPresets.size) common.push("N-7対応");
+  const extra = [];
+  const val = id => document.getElementById(id).value;
+  if (val("filterStore")) extra.push("店舗：" + val("filterStore"));
+  if (val("filterOwner")) extra.push("担当者：" + val("filterOwner"));
+  if (val("filterCat")) extra.push("対応区分：" + val("filterCat"));
+  if (extraStatusFilter) extra.push("目的ステータス：" + extraStatusFilter);
+  if (excludeStatuses.length) extra.push("目的ステータス：その他完了（" + excludeStatuses.join("・") + "を除く）");
+  if (selectedFlags.size) extra.push("活動の有無：" + FLAG_VALUES.filter(f => selectedFlags.has(f)).join("・"));
+  const q = val("searchBox").trim();
+  if (q) extra.push("検索：" + q);
+  return { common, extra };
+}
+
 async function exportAsXlsx(aoa) {
   const headerRow = aoa[0].map(l => String(l));
   const dataRows = aoa.slice(1).map(r => r.map(v => (v === null || v === undefined) ? "" : v));
@@ -701,11 +723,24 @@ async function exportAsXlsx(aoa) {
   // ブックの表示設定（これが無いと、環境によってExcelが並べ替え時に落ちることがある）
   wb.views = [{ x: 0, y: 0, width: 20000, height: 20000, firstSheet: 0, activeTab: 0, visible: true }];
   const ws = wb.addWorksheet("案件一覧");
+  const font = (o) => Object.assign({ name: "Calibri", size: 11 }, o);
+  const sel = describeSelections();
+  const now = new Date();
+  const stampText = now.getFullYear() + "/" + String(now.getMonth() + 1).padStart(2, "0") + "/" + String(now.getDate()).padStart(2, "0");
+  const sortText = (sortCol !== null) ? LABELS[sortCol] + (sortAsc ? " 昇順" : " 降順") : "標準の順";
+  const TOP = 3;   // 表の見出し行（1〜2行目は「何を選択して出力したか」の説明）
+
+  // 先頭2行：選択内容の説明
+  const allConds = sel.common.concat(sel.extra);
+  ws.getCell("A1").value = "出力条件：" + (allConds.length ? allConds.join(" ／ ") : "なし（全件）");
+  ws.getCell("A1").font = font({ bold: true, size: 11, color: { argb: "FF333333" } });
+  ws.getCell("A2").value = "出力日：" + stampText + "　／　件数：" + dataRows.length.toLocaleString() + "件　／　並び順：" + sortText;
+  ws.getCell("A2").font = font({ size: 10, color: { argb: "FF777777" } });
 
   // 「テーブル」として出力する：フィルター・並べ替えはExcel標準のテーブル機能に任せる
   ws.addTable({
     name: "AnkenTable",
-    ref: "A1",
+    ref: "A" + TOP,
     headerRow: true,
     totalsRow: false,
     style: { theme: "TableStyleLight1", showRowStripes: false },
@@ -738,21 +773,21 @@ async function exportAsXlsx(aoa) {
   const thinBorder = { style: "thin", color: { argb: "FFBFBFBF" } };
   const fullBorder = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
 
-  ws.getRow(1).eachCell(cell => {
+  ws.getRow(TOP).eachCell(cell => {
     cell.font = { bold: true, name: "Calibri", size: 11, color: { argb: "FF56585B" } };
     cell.fill = headerFill;
     cell.border = fullBorder;
     cell.alignment = { vertical: "middle", wrapText: true };
   });
   ws.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber <= TOP) return;
     row.eachCell({ includeEmpty: true }, cell => {
       cell.border = fullBorder;
       cell.alignment = { vertical: "top", wrapText: true, ...(typeof cell.value === "number" ? { horizontal: "right" } : {}) };
     });
   });
-  ws.views = [{ state: "frozen", ySplit: 1 }];   // 画面：1行目（見出し）を固定
-  ws.pageSetup.printTitlesRow = "1:1";            // 印刷：2ページ目以降にも1行目（見出し）を繰り返す
+  ws.views = [{ state: "frozen", ySplit: TOP }];   // 画面：説明の2行と見出し行を固定
+  ws.pageSetup.printTitlesRow = TOP + ":" + TOP;    // 印刷：2ページ目以降にも見出し行を繰り返す
   // 印刷：用紙は横向き、全列を1ページの幅に収める（縦方向は行数に応じて複数ページ）
   ws.pageSetup.paperSize = 9;   // A4
   ws.pageSetup.orientation = "landscape";
@@ -760,6 +795,56 @@ async function exportAsXlsx(aoa) {
   ws.pageSetup.fitToWidth = 1;
   ws.pageSetup.fitToHeight = 0;
   ws.pageSetup.margins = { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.25, footer: 0.25 };
+
+  // ---- 2枚目のシート「店舗別・CA別」：店舗ごとの計と、その店舗のCAごとの内訳（CAの並びはCA名簿の順）----
+  // 画面の店舗ボタンの選択に関係なく、全店舗・全CAを出す。集計の対象はサマリーシートと同じ
+  const allRows = rowsForMonth();
+  const bs = wb.addWorksheet("店舗別・CA別");
+  bs.getCell("A1").value = "出力条件：" + (sel.common.length ? sel.common.join(" ／ ") : "なし（全件）");
+  bs.getCell("A1").font = font({ bold: true, size: 11, color: { argb: "FF333333" } });
+  bs.getCell("A2").value = "出力日：" + stampText + "　／　集計の範囲：画面の「店舗別サマリー」と同じ（案件一覧の店舗・担当者・検索などの絞り込みは含みません）";
+  bs.getCell("A2").font = font({ size: 10, color: { argb: "FF777777" } });
+  bs.columns = [{ width: 26 }, { width: 18 }, { width: 11 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }];
+  const bThin = { style: "thin", color: { argb: "FFBFBFBF" } };
+  const bBox = { top: bThin, bottom: bThin, left: bThin, right: bThin };
+  const heads = ["店舗", "CA", "対象件数", ...BOX_CATS, "完了率"];
+  const hr = bs.addRow(heads);
+  hr.eachCell(c => {
+    c.font = font({ bold: true, color: { argb: "FF56585B" } });
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9E8E5" } };
+    c.border = bBox;
+    c.alignment = { horizontal: "center", vertical: "middle" };
+  });
+  const addAggRow = (store, ca, a, fillArgb, bold) => {
+    const r = bs.addRow([store, ca, a.total, ...BOX_CATS.map(c => a[c] || 0), a.total ? (a.完了 + a.対応不要) / a.total : "-"]);
+    r.eachCell((c, i) => {
+      c.border = bBox;
+      c.font = font({ bold: !!bold, color: { argb: (i === 4 && (a.未対応 || 0) > 0) ? "FFC00000" : "FF333333" } });
+      if (fillArgb) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillArgb } };
+      if (i >= 3) c.alignment = { horizontal: "right" };
+      if (i >= 3 && i <= 7) c.numFmt = "#,##0";
+      if (i === 8) c.numFmt = "0.0%";
+    });
+  };
+  addAggRow("全店舗合計", "", computeAgg(allRows), "FFE0E0E0", true);
+  STORE_ORDER.forEach(store => {
+    const storeRows = allRows.filter(r => r[STORE_IDX] === store);
+    addAggRow(store, "（店舗計）", computeAgg(storeRows), "FFF2F2F2", true);
+    const owners = OWNER_ORDER.filter(([owner, storeLabel]) => storeLabel === store).map(([owner]) => owner);
+    owners.forEach(owner => addAggRow(store, owner, computeAgg(storeRows.filter(r => r[OWNER_IDX] === owner)), null, false));
+    const others = storeRows.filter(r => !owners.includes(r[OWNER_IDX]));
+    if (others.length) addAggRow(store, "（CA名簿にない担当者）", computeAgg(others), null, false);   // 内訳の合計が店舗計と合うように
+  });
+  const noteRow = bs.rowCount + 2;
+  bs.getCell(noteRow, 1).value = "※完了率＝（完了＋対応不要）÷ 対象件数。CAの並びはCA名簿の順。";
+  bs.getCell(noteRow, 1).font = font({ size: 10, color: { argb: "FF777777" } });
+  bs.views = [{ state: "frozen", ySplit: 3 }];
+  bs.pageSetup.paperSize = 9;
+  bs.pageSetup.orientation = "portrait";
+  bs.pageSetup.fitToPage = true;
+  bs.pageSetup.fitToWidth = 1;
+  bs.pageSetup.fitToHeight = 0;
+  bs.pageSetup.printTitlesRow = "3:3";
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
