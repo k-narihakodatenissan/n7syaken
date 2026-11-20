@@ -1335,3 +1335,23 @@ To https://github.com/k-narihakodatenissan/n7syaken.git
 done 
 ===== 2026/11/20 20:08:48.19 ===== 
 Already up to date.
+warning: in the working copy of 'publish_log.txt', LF will be replaced by CRLF the next time Git touches it
+[main 1ea055e] update 2026/11/20 20:08:49.02
+ Committer: 成澤 邦彦 <PHT001420@DEALERS.JP.NISSAN.BIZ>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+To https://github.com/k-narihakodatenissan/n7syaken.git
+   6bf9c0b..1ea055e  main -> main
+done 
+===== 2026/11/21  8:46:01.25 ===== 
+Already up to date.
