@@ -825,7 +825,7 @@ async function exportAsXlsx(aoa) {
   bs.columns = [{ width: 26 }, { width: 18 }, { width: 11 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }];
   const bThin = { style: "thin", color: { argb: "FFBFBFBF" } };
   const bBox = { top: bThin, bottom: bThin, left: bThin, right: bThin };
-  const heads = ["店舗", "CA", "対象件数", ...BOX_CATS, "完了率", "対応率"];
+  const heads = ["店舗", "CA", "対象件数", ...BOX_CATS, "対応率", "完了率"];
   const hr = bs.addRow(heads);
   hr.eachCell(c => {
     c.font = font({ bold: true, color: { argb: "FF56585B" } });
@@ -834,8 +834,8 @@ async function exportAsXlsx(aoa) {
     c.alignment = { horizontal: "center", vertical: "middle" };
   });
   const addAggRow = (store, ca, a, fillArgb, bold) => {
-    const r = bs.addRow([store, ca, a.total, ...BOX_CATS.map(c => a[c] || 0), a.total ? (a.完了 + a.対応不要) / a.total : "-",
-                              a.total ? (a.対応中 + a.完了 + a.対応不要) / a.total : "-"]);
+    const r = bs.addRow([store, ca, a.total, ...BOX_CATS.map(c => a[c] || 0), a.total ? (a.対応中 + a.完了 + a.対応不要) / a.total : "-",
+                              a.total ? (a.完了 + a.対応不要) / a.total : "-"]);
     r.eachCell((c, i) => {
       c.border = bBox;
       c.font = font({ bold: !!bold, color: { argb: (i === 4 && (a.未対応 || 0) > 0) ? "FFC00000" : "FF333333" } });
@@ -855,7 +855,7 @@ async function exportAsXlsx(aoa) {
     if (others.length) addAggRow(store, "（CA名簿にない担当者）", computeAgg(others), null, false);   // 内訳の合計が店舗計と合うように
   });
   const noteRow = bs.rowCount + 2;
-  bs.getCell(noteRow, 1).value = "※完了率＝（完了＋対応不要）÷ 対象件数。対応率＝（対応中＋完了＋対応不要）÷ 対象件数。CAの並びはCA名簿の順。";
+  bs.getCell(noteRow, 1).value = "※対応率＝（対応中＋完了＋対応不要）÷ 対象件数。完了率＝（完了＋対応不要）÷ 対象件数。CAの並びはCA名簿の順。";
   bs.getCell(noteRow, 1).font = font({ size: 10, color: { argb: "FF777777" } });
   bs.views = [{ state: "frozen", ySplit: 3 }];
   bs.pageSetup.paperSize = 9;
